@@ -3,7 +3,10 @@ using System.Collections;
 
 namespace Svelto.Tasks
 {
-    public class SerialTaskCollection: TaskCollection
+    public class SerialTaskCollection : SerialTaskCollection<IEnumerator> 
+    {}
+
+    public class SerialTaskCollection<T>: TaskCollection<T> where T:IEnumerator
     {
         public event Action                 onComplete;
         public event Func<Exception, bool>  onException;
@@ -122,22 +125,6 @@ namespace Svelto.Tasks
                     {
                         _current = ce.Current;
 
-                        if (_current == ce)
-                            throw new Exception("An enumerator returning itself is not supported");
-
-                        if ((ce is TaskCollection == false) 
-                            && _current != null && _current != Break.It
-                            && _current != Break.AndStop)
-                        {
-                           IEnumerator result = StandardEnumeratorCheck(_current);
-                           if (result != null)
-                           {
-                               stack.Push(result); //push the new yielded task and execute it immediately
-
-                                continue;
-                           }
-                        }
-                        else
                         //Break.It breaks only the current task collection 
                         //enumeration but allows the parent task to continue
                         //yield break would instead stops only the single task
@@ -148,6 +135,24 @@ namespace Svelto.Tasks
                             return false;
                         }
 
+                        if (_isValueType == false)
+                        {
+                            if (_current == (object) ce)
+                                throw new Exception("An enumerator returning itself is not supported");
+
+                            if (ce is TaskCollection<IEnumerator> == false
+                                && _current != null)
+                            {
+                                IEnumerator result = StandardEnumeratorCheck(_current);
+                                if (result != null)
+                                {
+                                    stack.Push((T) result); //push the new yielded task and execute it immediately
+
+                                    continue;
+                                }
+                            }
+                        }
+                        
                         return true;
                     }
                 }
@@ -163,7 +168,9 @@ namespace Svelto.Tasks
 
         int _index;
         object _current;
-        string _name;
+        
+        readonly string _name;
+        readonly bool _isValueType = typeof(T).IsValueType;
     }
 }
 

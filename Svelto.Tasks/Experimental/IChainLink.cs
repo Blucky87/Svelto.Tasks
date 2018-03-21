@@ -1,7 +1,9 @@
+using System.Collections.Generic;
+
 namespace Svelto.Tasks.Experimental
 {
-    public interface IChainLink<in Token>
+    public interface IChainLink<Token>: IEnumerator<Token>
     {
-        Token token { set; }
+        Token Current { set; }
     }
 }

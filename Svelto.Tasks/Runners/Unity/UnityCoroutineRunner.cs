@@ -122,7 +122,7 @@ namespace Svelto.Tasks.Internal
                                 var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
                                     (handItToUnity.GetEnumerator());
 
-                                (pausableTask as PausableTask).onExplicitlyStopped = () =>
+                                (pausableTask as PausableTask<IEnumerator>).onExplicitlyStopped = () =>
                                 {
                                     runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
                                     handItToUnity.ForceStop();
@@ -143,7 +143,7 @@ namespace Svelto.Tasks.Internal
                                 var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
                                     (handItToUnity.GetEnumerator());
                                 
-                                (pausableTask as PausableTask).onExplicitlyStopped = () =>
+                                (pausableTask as PausableTask<IEnumerator>).onExplicitlyStopped = () =>
                                 {
                                     runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
                                     handItToUnity.ForceStop();

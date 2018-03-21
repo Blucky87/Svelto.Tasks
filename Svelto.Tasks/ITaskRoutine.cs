@@ -3,11 +3,11 @@ using System.Collections;
 
 namespace Svelto.Tasks
 {
-    public interface ITaskRoutine
+    public interface ITaskRoutine<T> where T:IEnumerator
     {
-        ITaskRoutine SetEnumeratorProvider(Func<IEnumerator> taskGenerator);
-        ITaskRoutine SetEnumerator(IEnumerator taskGenerator);
-        ITaskRoutine SetScheduler(IRunner runner);
+        ITaskRoutine<T> SetEnumeratorProvider(Func<T> taskGenerator);
+        ITaskRoutine<T> SetEnumerator(T taskGenerator);
+        ITaskRoutine<T> SetScheduler(IRunner runner);
 
         ContinuationWrapper Start(Action<PausableTaskException> onFail = null, Action onStop = null);
         ContinuationWrapper ThreadSafeStart(Action<PausableTaskException> onFail = null, Action onStop = null);

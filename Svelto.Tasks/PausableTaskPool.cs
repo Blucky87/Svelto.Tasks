@@ -1,12 +1,13 @@
+using System.Collections;
 using Svelto.DataStructures;
 
 namespace Svelto.Tasks.Internal
 {
     sealed class PausableTaskPool
     {
-        public PausableTask RetrieveTaskFromPool()
+        public PausableTask<IEnumerator> RetrieveTaskFromPool()
         {
-            PausableTask task;
+            PausableTask<IEnumerator> task;
 
             if (_pool.Dequeue(out task))
             {
@@ -18,18 +19,18 @@ namespace Svelto.Tasks.Internal
             return CreateEmptyTask();
         }
 
-        public void PushTaskBack(PausableTask task)
+        public void PushTaskBack(PausableTask<IEnumerator> task)
         {
             task.CleanUpOnRecycle(); //let's avoid leakings
 
             _pool.Enqueue(task);
         }
 
-        PausableTask CreateEmptyTask()
+        PausableTask<IEnumerator> CreateEmptyTask()
         {
-            return new PausableTask(this);
+            return new PausableTask<IEnumerator>(this);
         }
 
-        LockFreeQueue<PausableTask> _pool = new LockFreeQueue<PausableTask>();
+        LockFreeQueue<PausableTask<IEnumerator>> _pool = new LockFreeQueue<PausableTask<IEnumerator>>();
     }
 }

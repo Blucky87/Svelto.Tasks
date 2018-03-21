@@ -9,16 +9,18 @@ namespace Svelto.Tasks
     /// because in this way you could have the option to return a Task from
     /// an IEnumerator function which could have multiple return objects 
     /// (some ITask some not). Otherwise it should never be used
-    /// explicitly 
+    /// explicitly. ITasks are meant to be used for services or to
+    /// bind external libraries, but it's not efficent as allocation
+    /// can occur 
     /// </summary>
-    public class TaskWrapper: IEnumerator
+    public class TaskEnumerator: IEnumerator
     {
         public object Current { get { return null; } }
 
-        public TaskWrapper(ITask task):this(task as IAbstractTask)
+        public TaskEnumerator(ITask task):this(task as IAbstractTask)
         {}
 
-        protected TaskWrapper(IAbstractTask task)
+        protected TaskEnumerator(IAbstractTask task)
         {
             DBC.Check.Require((task is IEnumerable == false) && (task is IEnumerator == false), "Tasks and IEnumerators are mutually exclusive");
 

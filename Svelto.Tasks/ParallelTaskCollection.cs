@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Svelto.Tasks
 {
-    public class ParallelTaskCollection: TaskCollection
+    public class ParallelTaskCollection: TaskCollection<IEnumerator>
     {
         public event Action        		    onComplete;
         public event Func<Exception, bool>  onException;
@@ -140,19 +140,6 @@ namespace Svelto.Tasks
                             if (_current == ce)
                                 throw new Exception("An enumerator returning itself is not supported");
 
-                            if (ce is TaskCollection == false && 
-                                _current != null && _current != Break.It
-                                 && _current != Break.AndStop)
-                            {
-                                IEnumerator result = StandardEnumeratorCheck(_current);
-                                if (result != null)
-                                {
-                                    stack.Push(result); //push the new yielded task and execute it immediately
-
-                                    continue;
-                                }
-                            }
-                            else
                             //Break.It breaks only the current task collection 
                             //enumeration but allows the parent task to continue
                             //yield break would instead stops only the single task
@@ -163,6 +150,18 @@ namespace Svelto.Tasks
                                 _currentWrapper = ce.Current;
 
                                 return false;
+                            }
+                            
+                            if (ce is TaskCollection<IEnumerator> == false && 
+                                _current != null)
+                            {
+                                IEnumerator result = StandardEnumeratorCheck(_current);
+                                if (result != null)
+                                {
+                                    stack.Push(result); //push the new yielded task and execute it immediately
+
+                                    continue;
+                                }
                             }
 
                             _index = index + 1;

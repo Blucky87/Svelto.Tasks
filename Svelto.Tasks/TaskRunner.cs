@@ -25,11 +25,16 @@ namespace Svelto.Tasks
         /// <returns>
         /// New reusable TaskRoutine
         /// </returns>
-        public ITaskRoutine AllocateNewTaskRoutine()
+        public ITaskRoutine<T> AllocateNewTaskRoutine<T>() where T:IEnumerator
         {
-            return new PausableTask().SetScheduler(_runner);
+            return new PausableTask<T>().SetScheduler(_runner);
         }
-
+        
+        public ITaskRoutine<IEnumerator> AllocateNewTaskRoutine()
+        {
+            return new PausableTask<IEnumerator>().SetScheduler(_runner);
+        }
+        
         public void PauseAllTasks()
         {
             _runner.paused = true;
@@ -100,11 +105,6 @@ namespace Svelto.Tasks
             _runner = null;
             _instance = null;
         }
-
-//TaskRunner is supposed to be used in the mainthread only
-//this should be enforced in future. 
-//Runners should be used directly on other threads 
-//than the main one
 
         static void InitInstance()
         {

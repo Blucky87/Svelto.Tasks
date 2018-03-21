@@ -5,7 +5,7 @@ using Svelto.DataStructures;
 
 namespace Svelto.Tasks
 {
-    public abstract class TaskCollection: IEnumerator
+    public abstract class TaskCollection<T>: IEnumerator where T:IEnumerator
     {
         public bool            isRunning { protected set; get; }
         public abstract object Current   { get; }
@@ -18,26 +18,16 @@ namespace Svelto.Tasks
             _listOfStacks.Clear();
         }
 
-        public TaskCollection Add(ITask task)
-        {
-            if (task == null)
-                throw new ArgumentNullException();
-
-            Add(new TaskWrapper(task));
-
-            return this;
-        }
-
-        public TaskCollection Add(IEnumerator enumerator)
+        public TaskCollection<T> Add(T enumerator)
         {
             if (enumerator == null)
                 throw new ArgumentNullException();
 
             CheckForToken(enumerator);
 
-            Stack<IEnumerator> stack;
+            Stack<T> stack;
             if (_listOfStacks.Reuse(_listOfStacks.Count, out stack) == false)
-                stack = new Stack<IEnumerator>(_INITIAL_STACK_SIZE);
+                stack = new Stack<T>(_INITIAL_STACK_SIZE);
             else
                 stack.Clear();
 
@@ -55,7 +45,7 @@ namespace Svelto.Tasks
             var count = _listOfStacks.Count;
             for (int index = 0; index < count; ++index)
             {
-                Stack<IEnumerator> stack = _listOfStacks[index];
+                Stack<T> stack = _listOfStacks[index];
                 while (stack.Count > 1) stack.Pop();
             }
         }
@@ -66,48 +56,34 @@ namespace Svelto.Tasks
 
         protected TaskCollection(int initialSize)
         {
-            _listOfStacks = FasterList<Stack<IEnumerator>>.PreFill<Stack<IEnumerator>>(initialSize);
+            _listOfStacks = FasterList<Stack<T>>.PreFill<Stack<T>>(initialSize);
         }
 
         protected IEnumerator StandardEnumeratorCheck(object current)
         {
-            var enumerator = current as IEnumerator;
-            if (enumerator != null)
+            if (current is IEnumerator)
             {
                 CheckForToken(current);
 
-                return enumerator;
+                return (IEnumerator) current;
             }
-
-            var task = current as IAbstractTask;
-            if (task != null)
-                return CreateTaskWrapper(task);
-#if DEBUG && !PROFILER         
-            var ptasks = current as IEnumerator[]; 
-            if (ptasks != null)
+#if DEBUG && !PROFILER
+            if (current is IAbstractTask)
+                throw new TaskYieldsIEnumerableException("yielding a task as been deprecated for performance issues, use new TaskEnumerator explicitly");
+         
+            if (current is IEnumerator[])
                 throw new TaskYieldsIEnumerableException("yielding an array as been deprecated for performance issues, use paralleltask explicitly");
 
-            var enumerable = current as IEnumerable;
-            if (enumerable != null)
+            if (current is IEnumerable)
                 throw new TaskYieldsIEnumerableException("Yield an IEnumerable is not supported " + current.GetType());
 #endif
             return null;
         }
 
-        protected virtual TaskWrapper CreateTaskWrapper(IAbstractTask task)
-        {
-            var taskI = task as ITask;
-
-            if (taskI == null)
-                throw new ArgumentException();
-
-            return new TaskWrapper(taskI);
-        }
-
         protected virtual void CheckForToken(object current)
         {}       
 
-        protected FasterList<Stack<IEnumerator>> _listOfStacks;
+        protected FasterList<Stack<T>> _listOfStacks;
 
         const int _INITIAL_STACK_COUNT = 3;
         const int _INITIAL_STACK_SIZE = 3;
