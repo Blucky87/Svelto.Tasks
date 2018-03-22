@@ -102,7 +102,7 @@ namespace Svelto.Tasks.Internal
 
         public ITaskRoutine<T> SetEnumeratorProvider(Func<T> taskGenerator)
         {
-            _taskEnumerator = default(T);
+            _taskEnumerator = _default;
             _taskGenerator = taskGenerator;
 
             return this;
@@ -111,7 +111,7 @@ namespace Svelto.Tasks.Internal
         public ITaskRoutine<T> SetEnumerator(T taskEnumerator)
         {
             _taskGenerator = null;
-            if (EqualityComparer<T>.Default.Equals(_taskEnumerator, taskEnumerator) == false)
+            if (_equalityComparer.Equals(_taskEnumerator, taskEnumerator) == false)
                 _taskEnumeratorJustSet = true;
             _taskEnumerator = taskEnumerator;
 #if DEBUG && !PROFILER
@@ -186,10 +186,10 @@ namespace Svelto.Tasks.Internal
         {
             if (_name == string.Empty)
             {
-                if (_taskGenerator == null && _taskEnumerator == null)
+                if (_taskGenerator == null && isTaskEnumeratorValid == false)
                     _name = base.ToString();
                 else
-                if (_taskEnumerator != null)
+                if (isTaskEnumeratorValid == true)
                     _name = _taskEnumerator.ToString();
                 else
                 {
@@ -200,6 +200,11 @@ namespace Svelto.Tasks.Internal
             }
 
             return _name;
+        }
+
+        public bool isTaskEnumeratorValid
+        {
+            get { return _equalityComparer.Equals(_taskEnumerator, _default) == false; }
         }
 
         /// <summary>
@@ -343,10 +348,10 @@ namespace Svelto.Tasks.Internal
         /// </summary>
         internal void CleanUpOnRecycle()
         {
-            _pendingEnumerator = default(T);
+            _pendingEnumerator = _default;
             _pendingContinuationWrapper = null;
             _taskGenerator = null;
-            _taskEnumerator = default(T);
+            _taskEnumerator = _default;
             _runner = null;
             _onFail = null;
             _onStop = null;
@@ -367,7 +372,7 @@ namespace Svelto.Tasks.Internal
             _pendingRestart = false;
             _name = string.Empty;
             
-            _pendingEnumerator = default(T);
+            _pendingEnumerator = _default;
             _pendingContinuationWrapper = null;
             
             _coroutineWrapper.Clear();
@@ -383,6 +388,8 @@ namespace Svelto.Tasks.Internal
         {
             _coroutineWrapper = new SerialTaskCollection<T>(1);
             _continuationWrapper = new ContinuationWrapper();
+            
+            _callStartFirstError = CALL_START_FIRST_ERROR.FastConcat(" task: ", ToString());
 
             Reset();
         }
@@ -400,13 +407,14 @@ namespace Svelto.Tasks.Internal
         void InternalStart()
         {
             DBC.Check.Require(_pendingRestart == false, "a task has been reused while is pending to start");
-            DBC.Check.Require(_taskGenerator != null || _taskEnumerator != null, "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
+            DBC.Check.Require(_taskGenerator != null || isTaskEnumeratorValid == true, "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
             
             Resume(); //if it's paused, must resume
             
             var originalEnumerator = _taskEnumerator;
                 
-            if (originalEnumerator == null) originalEnumerator = _taskGenerator();
+            if (_taskGenerator != null)
+                originalEnumerator = _taskGenerator();
             
             //TaskRoutine case only!!
             ThreadUtility.MemoryBarrier();
@@ -433,7 +441,7 @@ namespace Svelto.Tasks.Internal
         {
             DBC.Check.Require(_runner != null, "SetScheduler function has never been called");
             
-            if (_taskEnumerator != null && _taskEnumeratorJustSet == false)
+            if (isTaskEnumeratorValid == true && _taskEnumeratorJustSet == false)
             {
                 DBC.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead");
                 
@@ -454,18 +462,15 @@ namespace Svelto.Tasks.Internal
 
         void SetTask(T task)
         {
-            var taskc = task as TaskCollection<T>;
-
-            if (taskc == null)
+            if (task is TaskCollection<T> == false)
             {
                 _coroutineWrapper.FastClear();
                 _coroutineWrapper.Add(task);
+
                 _coroutine = _coroutineWrapper;
             }
             else
-                _coroutine = taskc;
-            
-            _callStartFirstError = CALL_START_FIRST_ERROR.FastConcat(" task: ", ToString());
+                _coroutine = task as TaskCollection<T>;
         }
 
         IRunner                          _runner;
@@ -489,5 +494,7 @@ namespace Svelto.Tasks.Internal
         volatile bool                    _paused;
         volatile bool                    _pendingRestart;
         string                           _callStartFirstError;
+        EqualityComparer<T>             _equalityComparer = EqualityComparer<T>.Default;
+        T _default = default(T);
     }
 }
